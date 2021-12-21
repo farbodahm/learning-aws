@@ -1,0 +1,14 @@
+{
+  "name": "aws-python-project",
+  "version": "1.0.0",
+  "description": "<!-- title: 'AWS Python Example' description: 'This template demonstrates how to deploy a Python function running on AWS Lambda using the traditional Serverless Framework.' layout: Doc framework: v2 platform: AWS language: python priority: 2 authorLink: 'https://github.com/serverless' authorName: 'Serverless, inc.' authorAvatar: 'https://avatars1.githubusercontent.com/u/13742415?s=200&v=4' -->",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "serverless-python-requirements": "^5.2.2"
+  }
+}

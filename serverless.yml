@@ -1,0 +1,59 @@
+org: farbodahm
+app: aws-python-project
+service: aws-python-project
+frameworkVersion: '2 || 3'
+
+
+provider:
+  name: aws
+  runtime: python3.9
+  lambdaHashingVersion: 20201221
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - sns:Publish
+            - sns:Subscribe
+          Resource: !Ref MatrixInverseTopic
+
+
+functions:
+  hello:
+    handler: handler.hello
+    events:
+      - httpApi: 'POST /hello'
+
+      - sns:
+          arn: !Ref MatrixInverseTopic
+          topicName: MatrixInverseTopic
+    environment:
+      SNS_ARN: !Ref MatrixInverseTopic
+
+
+plugins:
+  - serverless-python-requirements
+
+
+custom:
+  pythonRequirements:
+    dockerizePip: non-linux
+
+
+package:
+  individually: true
+  excludeDevDependencies: false
+  exclude:
+   - node_modules/**
+   - venv/**
+
+
+resources:
+  Resources:
+    MatrixInverseTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        Subscription: 
+          - Endpoint: "farbodahmadian2014@gmail.com"
+            Protocol: "email"
+        TopicName: MatrixInverseTopic
