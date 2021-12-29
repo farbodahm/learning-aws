@@ -1,0 +1,139 @@
+service: matrix-inverse-v2
+frameworkVersion: '2 || 3'
+
+provider:
+  name: aws
+  runtime: python3.9
+  region: eu-east-1
+  lambdaHashingVersion: 20201221
+  tags:
+    owner: farbod
+
+
+functions:
+  get_matrix_inverse:
+    role: lambdaPublishSnsRole
+    handler: handler.get_matrix_inverse
+    events:
+      - httpApi: 'POST /matrix'
+      - sns:
+          arn: !Ref MatrixInverseTopicV2
+          topicName: MatrixInverseTopicV2
+    environment:
+      SNS_ARN: !Ref MatrixInverseTopicV2
+
+    # Send CloudWatch logs to Kinesis Stream
+    logSubscription:
+      filterPattern: 'matrix'
+  
+  preprocess:
+    handler: handler.preprocess
+    events:
+      - stream:
+        type: kinesis
+        arn:
+          Fn::GetAtt:
+            - MatrixInverseLogsStreamV2
+            - Arn
+
+
+plugins:
+  - serverless-python-requirements
+  - serverless-plugin-log-subscription
+
+
+custom:
+  pythonRequirements:
+    dockerizePip: non-linux
+
+  # Send CloudWatch logs to Kinesis Stream
+  logSubscription:
+    destinationArn:
+      Fn::GetAtt:
+        - MatrixInverseLogsStreamV2
+        - Arn
+    roleArn: !Ref subscriptionFiltersRole
+
+
+package:
+  individually: true
+  excludeDevDependencies: false
+  exclude:
+   - node_modules/**
+   - venv/**
+
+
+resources:
+  Resources:
+    # SNS Topic for sending emails
+    MatrixInverseTopicV2:
+      Type: AWS::SNS::Topic
+      Properties:
+        Subscription: 
+          - Endpoint: "farbodahmadian2014@gmail.com"
+            Protocol: "email"
+        TopicName: MatrixInverseTopicV2
+    
+    # Kinesis Stream for handling incoming logs
+    MatrixInverseLogsStreamV2: 
+      Type: AWS::Kinesis::Stream
+      Properties: 
+        Name: MatrixInverseLogsStreamV2
+        ShardCount: 200
+  
+    # Role for allowing Lambda function to publish SNS messages
+    lambdaPublishSnsRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: LambdaPublishSnsRole
+        # Trust policy
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action: sts:AssumeRole
+
+        # Permissions
+        Policies:
+          - PolicyName: publishSnsPolicy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - sns:Publish
+                    - sns:Subscribe
+                  Resource: !Ref MatrixInverseTopicV2
+
+    # Role for using CloudWatch Logs subscription filters
+    subscriptionFiltersRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: SubscriptionFiltersRole
+        # Trust policy
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - logs.amazonaws.com
+              Action: sts:AssumeRole
+
+        # Permissions
+        Policies:
+          - PolicyName: allowPutRecordToKinesis
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - kinesis:PutRecord
+                    - kinesis:PutRecords
+                  Resource:
+                    Fn::GetAtt:
+                      - MatrixInverseLogsStreamV2
+                      - Arn
